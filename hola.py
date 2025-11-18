@@ -9,8 +9,8 @@ API_KEY = os.getenv("APISPORTS_KEY")
 BASE_URL = "https://v3.football.api-sports.io"
 HEADERS = {"x-apisports-key": API_KEY, "Accept": "application/json"}
 
-# Los jugadores siempre están cargados en la temporada 2023
-PLAYER_SEASON = 2023  
+# 🔁 Temporadas a probar SOLO para el club random
+PLAYER_SEASONS = [2023]
 
 # --- CLUBES FAMOSOS ---
 CLUBES_FAMOSOS = [
@@ -33,7 +33,7 @@ CLUBES_FAMOSOS = [
     "Napoli"
 ]
 
-# IDs estáticos por si el endpoint de búsqueda falla (observado con Arsenal en Vercel)
+# IDs estáticos por si el endpoint de búsqueda falla
 CLUB_IDS_CACHE = {
     "real madrid": 541,
     "barcelona": 529,
@@ -68,6 +68,7 @@ def api_get(path, params=None):
 
 # ----------------------------- OBTENER ID DEL CLUB -----------------------------
 def get_team_id_by_name(name: str):
+    # Primero intento con la caché
     cached_id = CLUB_IDS_CACHE.get(name.lower())
     if cached_id:
         return cached_id
@@ -80,7 +81,7 @@ def get_team_id_by_name(name: str):
         return CLUB_IDS_CACHE.get(name.lower())
 
     exact = [
-        it for it in resp 
+        it for it in resp
         if (it.get("team") or {}).get("name", "").lower() == name.lower()
     ]
 
@@ -95,18 +96,31 @@ def get_players_from_team(team_id: int, season: int):
     page = 1
 
     while True:
-        js = api_get("/players", {
-            "team": team_id,
-            "season": season,
-            "page": page
-        })
+        try:
+            js = api_get("/players", {
+                "team": team_id,
+                "season": season,
+                "page": page
+            })
+        except Exception as e:
+            print(f"[WARN] Error llamando /players para team={team_id}, season={season}, page={page}: {e}")
+            break
+
+        # Si la API responde con errores explícitos, corto
+        if js.get("errors"):
+            print(f"[WARN] API devolvió errores para team={team_id}, season={season}, page={page}: {js.get('errors')}")
+            break
 
         resp = js.get("response", []) or []
+        if not resp:
+            # Sin más jugadores en esta página
+            break
 
         for it in resp:
             p = it.get("player") or {}
-            stats = it.get("statistics")[0] if it.get("statistics") else {}
-            pos = stats.get("games", {}).get("position")
+            stats_list = it.get("statistics") or []
+            stats = stats_list[0] if stats_list else {}
+            pos = (stats.get("games") or {}).get("position")
 
             jugadores.append({
                 "id": p.get("id"),
@@ -114,11 +128,14 @@ def get_players_from_team(team_id: int, season: int):
                 "age": p.get("age"),
                 "nationality": p.get("nationality"),
                 "position": pos,
-                "team_id": team_id
+                "team_id": team_id,
             })
 
         paging = js.get("paging") or {}
-        if paging.get("current") >= paging.get("total"):
+        current = paging.get("current") or page
+        total = paging.get("total") or current
+
+        if current >= total:
             break
 
         page += 1
@@ -129,32 +146,45 @@ def get_players_from_team(team_id: int, season: int):
 
 def get_random_player():
     """
-    Devuelve un jugador aleatorio de un club famoso.
+    Devuelve un jugador aleatorio de UN club famoso elegido al azar.
 
-    Se usa tanto en el servidor Flask (para Vercel) como al ejecutar el
-    script directamente.
+    - Elige un club random de la lista.
+    - Para ese club, prueba varias seasons (PLAYER_SEASONS).
+    - Si alguna season tiene jugadores, devuelve uno random.
+    - Si ninguna season tiene jugadores, lanza error SOLO de ese club.
     """
 
-    # Elegimos un club famoso al azar
+    # 1) Elegimos UN club famoso al azar
     club_random = random.choice(CLUBES_FAMOSOS)
+    print(f"[INFO] Club elegido al azar: {club_random}")
 
-    # Obtenemos su ID real desde API
+    # 2) Obtenemos su ID
     club_id = get_team_id_by_name(club_random)
-
     if not club_id:
         raise RuntimeError(f"No se pudo obtener el ID del club: {club_random}")
 
-    # Buscar jugadores de ese club
-    players = get_players_from_team(club_id, PLAYER_SEASON)
+    # 3) Probamos varias seasons SOLO para este club
+    ultimo_mensaje = ""
+    for season in PLAYER_SEASONS:
+        print(f"[INFO] Buscando jugadores de {club_random} en season={season}...")
+        players = get_players_from_team(club_id, season)
 
-    if not players:
-        raise RuntimeError(f"No se encontraron jugadores para {club_random}")
+        if players:
+            print(f"[OK] Encontrados {len(players)} jugadores para {club_random} en season={season}")
+            jugador = random.choice(players)
+            jugador["team_name"] = club_random
+            jugador["season"] = season
+            return jugador
 
-    # Elegir jugador conocido al azar
-    jugador = random.choice(players)
-    jugador["team_name"] = club_random
+        msg = f"No se encontraron jugadores para {club_random} (season {season})"
+        print("[WARN]", msg)
+        ultimo_mensaje = msg
 
-    return jugador
+    # 4) Si llegamos acá, ninguna season devolvió jugadores para ese club
+    raise RuntimeError(
+        f"No se encontraron jugadores para el club random {club_random} "
+        f"en ninguna de las seasons {PLAYER_SEASONS}. Último intento: {ultimo_mensaje}"
+    )
 
 
 def main():
