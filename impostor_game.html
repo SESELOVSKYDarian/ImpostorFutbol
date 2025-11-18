@@ -450,14 +450,14 @@
             try {
                 // Llamar al endpoint de Flask
                 const response = await fetch('/api/get-footballer');
-                
+                const data = await response.json().catch(() => null);
+
                 if (!response.ok) {
-                    throw new Error('Error al obtener datos del servidor');
+                    const serverError = data?.error || `Código HTTP ${response.status}`;
+                    throw new Error(`Error al obtener datos del servidor: ${serverError}`);
                 }
 
-                const data = await response.json();
-
-                if (data.error) {
+                if (data?.error) {
                     throw new Error(data.error);
                 }
 
