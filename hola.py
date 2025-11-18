@@ -1,10 +1,13 @@
-import os, json, random, requests
+import os
+import json
+import random
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
-API_KEY  = os.getenv("APISPORTS_KEY")
+API_KEY = os.getenv("APISPORTS_KEY")
 BASE_URL = "https://v3.football.api-sports.io"
-HEADERS  = {"x-apisports-key": API_KEY, "Accept": "application/json"}
+HEADERS = {"x-apisports-key": API_KEY, "Accept": "application/json"}
 
 # Los jugadores siempre están cargados en la temporada 2023
 PLAYER_SEASON = 2023  
@@ -32,6 +35,9 @@ CLUBES_FAMOSOS = [
 
 
 def api_get(path, params=None):
+    if not API_KEY:
+        raise RuntimeError("Falta la variable de entorno APISPORTS_KEY")
+
     r = requests.get(
         f"{BASE_URL}{path}", headers=HEADERS, params=params, timeout=30
     )
@@ -95,7 +101,14 @@ def get_players_from_team(team_id: int, season: int):
 # -------------------------------------------------------------------------------
 
 
-def main():
+def get_random_player():
+    """
+    Devuelve un jugador aleatorio de un club famoso.
+
+    Se usa tanto en el servidor Flask (para Vercel) como al ejecutar el
+    script directamente.
+    """
+
     # Elegimos un club famoso al azar
     club_random = random.choice(CLUBES_FAMOSOS)
 
@@ -103,19 +116,23 @@ def main():
     club_id = get_team_id_by_name(club_random)
 
     if not club_id:
-        print("No se pudo obtener el ID del club:", club_random)
-        return
+        raise RuntimeError(f"No se pudo obtener el ID del club: {club_random}")
 
     # Buscar jugadores de ese club
     players = get_players_from_team(club_id, PLAYER_SEASON)
 
     if not players:
-        print("No se encontraron jugadores para", club_random)
-        return
+        raise RuntimeError(f"No se encontraron jugadores para {club_random}")
 
     # Elegir jugador conocido al azar
     jugador = random.choice(players)
+    jugador["team_name"] = club_random
 
+    return jugador
+
+
+def main():
+    jugador = get_random_player()
     print(json.dumps(jugador, ensure_ascii=False, indent=2))
 
 
