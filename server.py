@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, send_from_directory
-import subprocess
-import json
 import os
+
+from hola import get_random_player
 
 app = Flask(__name__)
 
@@ -16,19 +16,10 @@ def index():
 @app.route("/api/get-footballer")
 def get_footballer():
     """
-    Corre hola.py, obtiene el JSON y devuelve solo el jugador elegido.
+    Obtiene un jugador aleatorio usando la lógica compartida de hola.py.
     """
     try:
-        result = subprocess.check_output(
-            ["python", "hola.py"], 
-            stderr=subprocess.STDOUT,
-            text=True
-        )
-
-        data = json.loads(result)
-
-        if not data or "id" not in data:
-            return jsonify({"error": "El script no devolvió datos válidos."}), 500
+        data = get_random_player()
 
         # Enviar al HTML solo el jugador conocido
         return jsonify({
@@ -37,14 +28,9 @@ def get_footballer():
             "age": data.get("age"),
             "nationality": data.get("nationality"),
             "position": data.get("position"),
-            "team": data.get("team_id")   # ← usar team_id porque eso devuelve hola.py
+            "team": data.get("team_id"),  # ← usar team_id porque eso devuelve hola.py
+            "team_name": data.get("team_name"),
         })
-
-    except subprocess.CalledProcessError as e:
-        return jsonify({
-            "error": "Error ejecutando hola.py",
-            "details": e.output
-        }), 500
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
