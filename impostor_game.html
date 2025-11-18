@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego del Impostor - Futbolistas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .setup-screen, .game-screen, .countdown-screen {
+            display: none;
+        }
+
+        .setup-screen.active, .game-screen.active, .countdown-screen.active {
+            display: block;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        input[type="number"],
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .player-names {
+            display: none;
+        }
+
+        .player-names.active {
+            display: block;
+        }
+
+        .card-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 400px;
+            height: 300px;
+            perspective: 1000px;
+            cursor: pointer;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card-front {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .card-back {
+            background: white;
+            border: 3px solid #667eea;
+            transform: rotateY(180deg);
+        }
+
+        .card-back.impostor {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-color: #f5576c;
+            color: white;
+        }
+
+        .player-name-card {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .footballer-name {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+        }
+
+        .card-back.impostor .footballer-name {
+            color: white;
+            font-size: 2em;
+        }
+
+        .hint {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            font-size: 0.95em;
+            text-align: center;
+        }
+
+        .next-player-btn {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            margin-top: 20px;
+        }
+
+        .next-player-btn:hover {
+            box-shadow: 0 10px 20px rgba(72, 187, 120, 0.4);
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-size: 1.2em;
+            padding: 20px;
+        }
+
+        .error {
+            color: #f5576c;
+            text-align: center;
+            padding: 15px;
+            background: #ffe0e6;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .info-text {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .reset-btn {
+            background: #f5576c;
+        }
+
+        .reset-btn:hover {
+            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.4);
+        }
+
+        /* Countdown Screen */
+        .countdown-screen {
+            text-align: center;
+        }
+
+        .countdown-number {
+            font-size: 10em;
+            font-weight: bold;
+            color: #667eea;
+            animation: pulse 1s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .countdown-text {
+            font-size: 1.5em;
+            color: #666;
+            margin-top: 20px;
+        }
+
+        .player-progress {
+            text-align: center;
+            color: #667eea;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚽ Juego del Impostor</h1>
+        
+        <!-- Pantalla de configuración -->
+        <div class="setup-screen active">
+            <div class="input-group">
+                <label for="numPlayers">Cantidad de jugadores:</label>
+                <input type="number" id="numPlayers" min="3" max="20" value="5">
+            </div>
+
+            <div class="input-group">
+                <label for="numImpostors">Cantidad de impostores:</label>
+                <input type="number" id="numImpostors" min="1" max="5" value="1">
+            </div>
+
+            <div class="input-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="withHint">
+                    <label for="withHint" style="margin: 0;">¿Dar pista al impostor?</label>
+                </div>
+                <p class="info-text">La pista mostrará información del jugador real (posición, nacionalidad, equipo)</p>
+            </div>
+
+            <button onclick="startPlayerNames()">Continuar</button>
+
+            <div class="player-names" id="playerNamesSection">
+                <h3 style="margin: 20px 0; color: #667eea;">Ingresa los nombres:</h3>
+                <div id="playerInputs"></div>
+                <button onclick="startGame()">Iniciar Juego</button>
+            </div>
+        </div>
+
+        <!-- Pantalla del juego -->
+        <div class="game-screen" id="gameScreen">
+            <div id="loadingMessage" class="loading">Cargando jugador desde la API...</div>
+            <div id="errorMessage" class="error" style="display: none;"></div>
+            
+            <div class="card-container" id="cardContainer" style="display: none;">
+                <div class="player-progress" id="playerProgress"></div>
+                
+                <div class="card" id="playerCard" onclick="flipCard()">
+                    <div class="card-inner">
+                        <div class="card-face card-front">
+                            <div class="player-name-card" id="cardPlayerName"></div>
+                            <p>👆 Toca para revelar</p>
+                        </div>
+                        <div class="card-face card-back" id="cardBack">
+                            <div class="footballer-name" id="cardFootballerName"></div>
+                            <div class="hint" id="cardHint" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="nextPlayerBtn" class="next-player-btn" onclick="nextPlayer()" style="display: none;">
+                    Siguiente Jugador ➡
+                </button>
+
+                <button onclick="resetGame()" class="reset-btn">🔄 Nueva Partida</button>
+            </div>
+        </div>
+
+        <!-- Pantalla de cuenta regresiva -->
+        <div class="countdown-screen" id="countdownScreen">
+            <div class="countdown-number" id="countdownNumber">3</div>
+            <div class="countdown-text">¡El juego comienza!</div>
+        </div>
+    </div>
+
+    <script>
+        let gameData = {
+            players: [],
+            numImpostors: 1,
+            withHint: false,
+            impostorIndices: [],
+            footballerData: null,
+            currentCardIndex: 0,
+            cardRevealed: false
+        };
+
+        function startPlayerNames() {
+            const numPlayers = parseInt(document.getElementById('numPlayers').value);
+            const numImpostors = parseInt(document.getElementById('numImpostors').value);
+
+            if (numPlayers < 3) {
+                alert('Debe haber al menos 3 jugadores');
+                return;
+            }
+
+            if (numImpostors >= numPlayers) {
+                alert('La cantidad de impostores debe ser menor que la cantidad de jugadores');
+                return;
+            }
+
+            gameData.numImpostors = numImpostors;
+            gameData.withHint = document.getElementById('withHint').checked;
+
+            const playerInputsDiv = document.getElementById('playerInputs');
+            playerInputsDiv.innerHTML = '';
+
+            for (let i = 0; i < numPlayers; i++) {
+                const inputGroup = document.createElement('div');
+                inputGroup.className = 'input-group';
+                inputGroup.innerHTML = `
+                    <label>Jugador ${i + 1}:</label>
+                    <input type="text" id="player${i}" placeholder="Nombre del jugador ${i + 1}" required>
+                `;
+                playerInputsDiv.appendChild(inputGroup);
+            }
+
+            document.getElementById('playerNamesSection').classList.add('active');
+        }
+
+        async function startGame() {
+            const numPlayers = parseInt(document.getElementById('numPlayers').value);
+            const players = [];
+
+            for (let i = 0; i < numPlayers; i++) {
+                const name = document.getElementById(`player${i}`).value.trim();
+                if (!name) {
+                    alert(`Por favor ingresa el nombre del Jugador ${i + 1}`);
+                    return;
+                }
+                players.push(name);
+            }
+
+            gameData.players = players;
+
+            // Seleccionar impostores aleatorios
+            const indices = [...Array(numPlayers).keys()];
+            gameData.impostorIndices = [];
+            for (let i = 0; i < gameData.numImpostors; i++) {
+                const randomIndex = Math.floor(Math.random() * indices.length);
+                gameData.impostorIndices.push(indices[randomIndex]);
+                indices.splice(randomIndex, 1);
+            }
+
+            // Cambiar a pantalla de juego
+            document.querySelector('.setup-screen').classList.remove('active');
+            document.getElementById('gameScreen').classList.add('active');
+
+            // Cargar datos del futbolista desde la API
+            await loadFootballerData();
+        }
+
+        async function loadFootballerData() {
+            const loadingMsg = document.getElementById('loadingMessage');
+            const errorMsg = document.getElementById('errorMessage');
+            const cardContainer = document.getElementById('cardContainer');
+
+            loadingMsg.style.display = 'block';
+            errorMsg.style.display = 'none';
+            cardContainer.style.display = 'none';
+
+            try {
+                // Llamar al endpoint de Flask
+                const response = await fetch('/api/get-footballer');
+                
+                if (!response.ok) {
+                    throw new Error('Error al obtener datos del servidor');
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                gameData.footballerData = {
+                    name: data.name,
+                    age: data.age,
+                    nationality: data.nationality,
+                    position: data.position,
+                    team: data.team
+                };
+
+                loadingMsg.style.display = 'none';
+                cardContainer.style.display = 'block';
+                gameData.currentCardIndex = 0;
+                gameData.cardRevealed = false;
+                showCard(0);
+
+            } catch (error) {
+                console.error('Error:', error);
+                loadingMsg.style.display = 'none';
+                errorMsg.textContent = `⚠️ Error: ${error.message}. Por favor, verifica que el servidor esté corriendo e intenta nuevamente.`;
+                errorMsg.style.display = 'block';
+            }
+        }
+
+        function showCard(index) {
+            gameData.currentCardIndex = index;
+            gameData.cardRevealed = false;
+            const player = gameData.players[index];
+            const isImpostor = gameData.impostorIndices.includes(index);
+
+            // Actualizar progreso
+            document.getElementById('playerProgress').textContent = 
+                `Jugador ${index + 1} de ${gameData.players.length}`;
+
+            // Reset card flip y hacerla visible
+            const card = document.getElementById('playerCard');
+            card.classList.remove('flipped', 'hidden');
+
+            // Ocultar botón de siguiente jugador
+            document.getElementById('nextPlayerBtn').style.display = 'none';
+
+            // Mostrar nombre del jugador en el frente
+            document.getElementById('cardPlayerName').textContent = player;
+
+            // Configurar el reverso
+            const cardBack = document.getElementById('cardBack');
+            const footballerNameEl = document.getElementById('cardFootballerName');
+            const hintEl = document.getElementById('cardHint');
+
+            if (isImpostor) {
+                cardBack.classList.add('impostor');
+                footballerNameEl.textContent = '🎭 IMPOSTOR';
+                
+                if (gameData.withHint && gameData.footballerData) {
+                    hintEl.style.display = 'block';
+                    hintEl.innerHTML = `
+                        <strong>Pista sobre el jugador real:</strong><br>
+                        Posición: ${gameData.footballerData.position}<br>
+                        Nacionalidad: ${gameData.footballerData.nationality}<br>
+                        Equipo: ${gameData.footballerData.team}
+                    `;
+                } else {
+                    hintEl.style.display = 'none';
+                }
+            } else {
+                cardBack.classList.remove('impostor');
+                footballerNameEl.textContent = gameData.footballerData.name;
+                hintEl.style.display = 'none';
+            }
+        }
+
+        function flipCard() {
+            if (!gameData.cardRevealed) {
+                const card = document.getElementById('playerCard');
+                card.classList.add('flipped');
+                gameData.cardRevealed = true;
+
+                // Mostrar botón de siguiente jugador después de revelar
+                setTimeout(() => {
+                    document.getElementById('nextPlayerBtn').style.display = 'block';
+                }, 600);
+            }
+        }
+
+        function nextPlayer() {
+            const card = document.getElementById('playerCard');
+            
+            // Ocultar la carta con animación
+            card.classList.add('hidden');
+
+            setTimeout(() => {
+                if (gameData.currentCardIndex < gameData.players.length - 1) {
+                    // Mostrar siguiente jugador
+                    showCard(gameData.currentCardIndex + 1);
+                } else {
+                    // Última carta, iniciar countdown
+                    startCountdown();
+                }
+            }, 300);
+        }
+
+       function startCountdown() {
+            // Ocultar pantalla de juego
+            document.getElementById('gameScreen').classList.remove('active');
+            
+            // Mostrar pantalla de countdown
+            const countdownScreen = document.getElementById('countdownScreen');
+            countdownScreen.classList.add('active');
+
+            let count = 3;
+            const countdownNumber = document.getElementById('countdownNumber');
+            const countdownText = document.querySelector('.countdown-text');
+            
+            const countdownInterval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownNumber.textContent = count;
+                    // Re-trigger animation
+                    countdownNumber.style.animation = 'none';
+                    setTimeout(() => {
+                        countdownNumber.style.animation = 'pulse 1s ease-in-out';
+                    }, 10);
+                } else {
+                    clearInterval(countdownInterval);
+                    countdownNumber.textContent = '¡YA!';
+                    countdownNumber.style.color = '#48bb78';
+                    
+                    // Seleccionar jugador aleatorio para comenzar
+                    setTimeout(() => {
+                        const randomPlayerIndex = Math.floor(Math.random() * gameData.players.length);
+                        const startingPlayer = gameData.players[randomPlayerIndex];
+                        
+                        countdownNumber.textContent = '🎯';
+                        countdownNumber.style.fontSize = '8em';
+                        countdownText.innerHTML = `<strong>Comienza:</strong><br><span style="font-size: 1.3em; color: #667eea; font-weight: bold;">${startingPlayer}</span>`;
+                        
+                        // Después de 3 segundos, volver a la configuración
+                        setTimeout(() => {
+                            resetGame();
+                        }, 3000);
+                    }, 1500);
+                }
+            }, 1000);
+        }
+
+        function resetGame() {
+            gameData = {
+                players: [],
+                numImpostors: 1,
+                withHint: false,
+                impostorIndices: [],
+                footballerData: null,
+                currentCardIndex: 0,
+                cardRevealed: false
+            };
+
+            document.getElementById('countdownScreen').classList.remove('active');
+            document.getElementById('gameScreen').classList.remove('active');
+            document.querySelector('.setup-screen').classList.add('active');
+            document.getElementById('playerNamesSection').classList.remove('active');
+            document.getElementById('numPlayers').value = 5;
+            document.getElementById('numImpostors').value = 1;
+            document.getElementById('withHint').checked = false;
+        }
+    </script>
+</body>
+</html>
