@@ -33,6 +33,27 @@ CLUBES_FAMOSOS = [
     "Napoli"
 ]
 
+# IDs estáticos por si el endpoint de búsqueda falla (observado con Arsenal en Vercel)
+CLUB_IDS_CACHE = {
+    "real madrid": 541,
+    "barcelona": 529,
+    "atletico madrid": 530,
+    "manchester city": 50,
+    "manchester united": 33,
+    "liverpool": 40,
+    "arsenal": 42,
+    "chelsea": 49,
+    "tottenham": 47,
+    "bayern munich": 157,
+    "borussia dortmund": 165,
+    "psg": 85,
+    "juventus": 109,
+    "inter": 108,
+    "ac milan": 489,
+    "roma": 497,
+    "napoli": 492,
+}
+
 
 def api_get(path, params=None):
     if not API_KEY:
@@ -47,11 +68,16 @@ def api_get(path, params=None):
 
 # ----------------------------- OBTENER ID DEL CLUB -----------------------------
 def get_team_id_by_name(name: str):
+    cached_id = CLUB_IDS_CACHE.get(name.lower())
+    if cached_id:
+        return cached_id
+
     js = api_get("/teams", {"name": name})
     resp = js.get("response", []) or []
 
     if not resp:
-        return None
+        # Reintentar con la caché si el API no devuelve resultados
+        return CLUB_IDS_CACHE.get(name.lower())
 
     exact = [
         it for it in resp 
